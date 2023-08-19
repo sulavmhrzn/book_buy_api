@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 fastapi = {version = "*", extras = ["all"]}
 beanie = "*"
+pytest = "*"
 
 [dev-packages]
 

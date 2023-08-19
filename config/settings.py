@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     MONGO_URI: str
     MONGO_DB: str
+    SMTP_USERNAME: str
+    SMTP_PASSWORD: str
+    SMTP_PORT: int
+    SMTP_HOST: str
     model_config = SettingsConfigDict(env_file=".env")
 
 

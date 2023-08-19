@@ -2,7 +2,7 @@ from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config.settings import settings
-from models import users
+from models import tokens, users
 
 
 async def init_db() -> None:
@@ -12,5 +12,6 @@ async def init_db() -> None:
         database=client[settings.MONGO_DB],
         document_models=[
             users.User,
+            tokens.ActivationToken,
         ],
     )

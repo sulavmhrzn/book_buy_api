@@ -8,6 +8,7 @@ fastapi = {version = "*", extras = ["all"]}
 beanie = "*"
 pytest = "*"
 argon2-cffi = "*"
+fastapi-mail = "*"
 
 [dev-packages]
 

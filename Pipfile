@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 fastapi = {version = "*", extras = ["all"]}
+beanie = "*"
 
 [dev-packages]
 

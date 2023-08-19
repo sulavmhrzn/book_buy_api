@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from beanie import Document, Indexed
 from pydantic import Field
@@ -12,3 +13,7 @@ class User(Document):
 
     class Settings:
         name = "users"
+
+    @classmethod
+    async def get_users_by_email(cls, *, email: str) -> Optional["User"]:
+        return await cls.find_one(cls.email == email)

@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str
     SMTP_PORT: int
     SMTP_HOST: str
+    JWT_SECRET: str
     model_config = SettingsConfigDict(env_file=".env")
 
 

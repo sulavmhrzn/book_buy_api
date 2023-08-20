@@ -9,6 +9,7 @@ beanie = "*"
 pytest = "*"
 argon2-cffi = "*"
 fastapi-mail = "*"
+python-jose = {version = "*", extras = ["cryptography"]}
 
 [dev-packages]
 

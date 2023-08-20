@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 
 from models.tokens import ActivationToken
 from models.users import User
@@ -12,6 +13,7 @@ from schemas.users import (
 )
 from utils.mails import send_email
 from utils.passwords import create_hash_password
+from utils.security import create_access_token, get_current_user
 from utils.tokens import generate_token
 
 router = APIRouter()
@@ -94,9 +96,21 @@ async def get_activation_token(
 
 
 @router.post("/access-token")
-async def get_access_token():
+async def get_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     """Get a new access token for a user."""
-    pass
+    email = form_data.username
+    password = form_data.password
+    user = await User.authenticate(email=email, password=password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+        )
+    token = create_access_token(sub=user.email)
+    return {"access_token": token, "token_type": "bearer"}
 
 
 @router.put("/activated")
@@ -124,7 +138,7 @@ async def activate_user(token: str):
     )
 
 
-@router.get("/me")
-async def get_me():
+@router.get("/me", response_model=OutputUserSchema)
+async def get_me(user: User = Depends(get_current_user)):
     """Get the current user's information."""
-    pass
+    return user.model_dump(by_alias=True)

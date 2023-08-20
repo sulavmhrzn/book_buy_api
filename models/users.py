@@ -11,6 +11,7 @@ class User(Document):
     email: Indexed(str, unique=True)
     hashed_password: str
     is_active: bool = False
+    is_admin: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Settings:

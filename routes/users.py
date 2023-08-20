@@ -100,9 +100,28 @@ async def get_access_token():
 
 
 @router.put("/activated")
-async def activate_user():
+async def activate_user(token: str):
     """Activate a user's account."""
-    pass
+    exists = await ActivationToken.find_one(ActivationToken.activation_token == token)
+    if not exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid token.",
+        )
+    if exists.expires_at < datetime.utcnow():
+        await exists.delete()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token has expired.",
+        )
+    user = await User.find_one(User.id == exists.user_id)
+    user.is_active = True
+    await user.save()
+    await exists.delete()
+    return JSONResponse(
+        content="User activated.",
+        status_code=status.HTTP_200_OK,
+    )
 
 
 @router.get("/me")

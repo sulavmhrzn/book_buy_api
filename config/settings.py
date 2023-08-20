@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     SMTP_PORT: int
     SMTP_HOST: str
     JWT_SECRET: str
+    JWT_EXPIRY_MINUTES: int
+    REDIS_URL: str
     model_config = SettingsConfigDict(env_file=".env")
 
 

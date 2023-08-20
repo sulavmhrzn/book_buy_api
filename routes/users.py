@@ -1,18 +1,23 @@
 from datetime import datetime, timedelta
 
+import aioredis
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
+from config.settings import settings
 from models.tokens import ActivationToken
 from models.users import User
 from schemas.users import (
+    ChangePasswordSchema,
     CreateUserSchema,
     GetNewActivationTokenSchema,
     OutputUserSchema,
 )
 from utils.mails import send_email
-from utils.passwords import create_hash_password
+from utils.passwords import create_hash_password, verify_password
+from utils.redis import init_redis
 from utils.security import create_access_token, get_current_user
 from utils.tokens import generate_token
 
@@ -142,3 +147,46 @@ async def activate_user(token: str):
 async def get_me(user: User = Depends(get_current_user)):
     """Get the current user's information."""
     return user.model_dump(by_alias=True)
+
+
+@router.post("/change-password")
+async def change_password(
+    password: ChangePasswordSchema,
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    """Reset a user's password."""
+    auth_header = request.headers.get("Authorization")
+    token = auth_header.split(" ")[1]
+
+    if not verify_password(password.old_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please enter your current password correctly.",
+        )
+
+    if password.old_password == password.new_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your new password cannot be similar to the old password.",
+        )
+
+    await request.app.state.redis.setex(
+        f"bl_{token}", time=timedelta(minutes=settings.JWT_EXPIRY_MINUTES), value=token
+    )
+
+    user.hashed_password = create_hash_password(password.new_password)
+    await user.save()
+    return JSONResponse(
+        content="Password changed successfully.", status_code=status.HTTP_200_OK
+    )
+
+
+@router.post("/logout")
+async def logout(request: Request, user: User = Depends(get_current_user)):
+    auth_header = request.headers.get("Authorization")
+    token = auth_header.split(" ")[1]
+    await request.app.state.redis.setex(
+        f"bl_{token}", time=timedelta(minutes=settings.JWT_EXPIRY_MINUTES), value=token
+    )
+    return JSONResponse(content="Logged out successfully.")

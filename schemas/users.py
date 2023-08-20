@@ -30,3 +30,8 @@ class OutputUserSchema(BaseModel):
 
 class GetNewActivationTokenSchema(BaseModel):
     email: EmailStr
+
+
+class ChangePasswordSchema(BaseModel):
+    old_password: str = Field(..., min_length=8, max_length=32)
+    new_password: str = Field(..., min_length=8, max_length=32)

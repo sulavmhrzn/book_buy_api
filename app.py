@@ -1,8 +1,11 @@
 from fastapi import FastAPI
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 
 from config.settings import settings
 from routes import users
 from utils.database import init_db
+from utils.redis import init_redis
 
 
 def create_app() -> FastAPI:
@@ -14,9 +17,22 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+@app.middleware("http")
+async def check_jwt_blacklist(request: Request, call_next):
+    auth_header = request.headers.get("authorization")
+    token = auth_header.split(" ")[1] if auth_header else None
+    if await app.state.redis.get(f"bl_{token}"):
+        return JSONResponse(
+            status_code=401,
+            content={"message": "Token has been revoked"},
+        )
+    return await call_next(request)
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     await init_db()
+    app.state.redis = await init_redis()
 
 
 @app.get("/healthcheck")

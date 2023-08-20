@@ -26,3 +26,7 @@ class OutputUserSchema(BaseModel):
     email: EmailStr
     is_active: bool
     model_config = ConfigDict(extra="ignore")
+
+
+class GetNewActivationTokenSchema(BaseModel):
+    email: EmailStr

@@ -5,7 +5,11 @@ from fastapi.responses import JSONResponse
 
 from models.tokens import ActivationToken
 from models.users import User
-from schemas.users import CreateUserSchema, OutputUserSchema
+from schemas.users import (
+    CreateUserSchema,
+    GetNewActivationTokenSchema,
+    OutputUserSchema,
+)
 from utils.mails import send_email
 from utils.passwords import create_hash_password
 from utils.tokens import generate_token
@@ -21,7 +25,7 @@ async def register(
     background_tasks: BackgroundTasks,
 ) -> JSONResponse:
     """Get a new user's information and create a new user in the database."""
-    if exists := await User.get_users_by_email(email=new_user.email):
+    if exists := await User.get_user_by_email(email=new_user.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"User with email {exists.email} already exists",
@@ -48,6 +52,43 @@ async def register(
         content={
             "message": OutputUserSchema(**result.model_dump(by_alias=True)).model_dump()
         },
+        status_code=status.HTTP_201_CREATED,
+    )
+
+
+@router.post("/activate-token")
+async def get_activation_token(
+    user: GetNewActivationTokenSchema, background_tasks: BackgroundTasks
+):
+    """Get a new activation token for a user."""
+    user_exists = await User.get_user_by_email(email=user.email)
+    if not user_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with email {user.email} not found",
+        )
+    exists = await ActivationToken.get_token_for_user(user_id=user_exists.id)
+    if exists:
+        # if the token hasn't expired, return it instead of creating a new one
+        if exists.expires_at > datetime.utcnow():
+            return JSONResponse(
+                content=f"Your activation token: {exists.activation_token}",
+                status_code=status.HTTP_200_OK,
+            )
+        await exists.delete()
+    token = await ActivationToken(
+        activation_token=generate_token(),
+        user_id=user_exists.id,
+        expires_at=datetime.utcnow() + timedelta(days=1),
+    ).insert()
+    background_tasks.add_task(
+        send_email,
+        subject="Activation Token",
+        recipients=user_exists.email,
+        body=f"Your activation token: {token.activation_token}. Please use it within 24 hours.",
+    )
+    return JSONResponse(
+        content=f"Your new activation token: {token.activation_token}. Please use it within 24 hours.",
         status_code=status.HTTP_201_CREATED,
     )
 

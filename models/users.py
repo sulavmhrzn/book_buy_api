@@ -15,5 +15,5 @@ class User(Document):
         name = "users"
 
     @classmethod
-    async def get_users_by_email(cls, *, email: str) -> Optional["User"]:
+    async def get_user_by_email(cls, *, email: str) -> Optional["User"]:
         return await cls.find_one(cls.email == email)

@@ -3,7 +3,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 from config.settings import settings
-from routes import users
+from routes import authors, books, users
 from utils.database import init_db
 from utils.redis import init_redis
 
@@ -11,6 +11,8 @@ from utils.redis import init_redis
 def create_app() -> FastAPI:
     app = FastAPI(title="Book Buy API")
     app.include_router(users.router, prefix="/users", tags=["users"])
+    app.include_router(authors.router, prefix="/authors", tags=["authors"])
+    app.include_router(books.router, prefix="/books", tags=["books"])
     return app
 
 

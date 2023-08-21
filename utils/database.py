@@ -2,7 +2,7 @@ from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config.settings import settings
-from models import tokens, users
+from models import authors, tokens, users
 
 
 async def init_db() -> None:
@@ -13,5 +13,6 @@ async def init_db() -> None:
         document_models=[
             users.User,
             tokens.ActivationToken,
+            authors.Author,
         ],
     )

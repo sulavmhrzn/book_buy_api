@@ -11,6 +11,7 @@ argon2-cffi = "*"
 fastapi-mail = "*"
 python-jose = {version = "*", extras = ["cryptography"]}
 aioredis = "*"
+cloudinary = "*"
 
 [dev-packages]
 

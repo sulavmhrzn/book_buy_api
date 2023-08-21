@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_EXPIRY_MINUTES: int
     REDIS_URL: str
+    CLOUDINARY_URL: str
     model_config = SettingsConfigDict(env_file=".env")
 
 

@@ -123,7 +123,8 @@ async def delete_book(book_id: PydanticObjectId, user: User = Depends(get_admin_
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# TODO: Implement update book later on
 @router.put("/{book_id}")
-async def update_book(book_id: int):
+async def update_book(book_id: PydanticObjectId, user: User = Depends(get_admin_user)):
     """Update a book by id"""
     pass

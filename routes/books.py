@@ -11,7 +11,7 @@ from config.settings import settings
 from models.authors import Author
 from models.books import Book
 from models.users import User
-from schemas.books import BookCreateSchema, BookListOutSchema
+from schemas.books import BookCreateSchema, BookDetailOutSchema, BookListOutSchema
 from utils.security import get_admin_user
 
 router = APIRouter()
@@ -79,9 +79,31 @@ async def get_books():
 
 
 @router.get("/{book_id}")
-async def get_book(book_id: int):
+async def get_book(book_id: PydanticObjectId):
     """Get a book by id"""
-    pass
+    book = await Book.get(book_id)
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+
+    book_detail = await book.aggregate(
+        [
+            {
+                "$lookup": {
+                    "from": "authors",
+                    "localField": "author_id",
+                    "foreignField": "_id",
+                    "as": "author",
+                }
+            }
+        ],
+        projection_model=BookDetailOutSchema,
+    ).to_list(1)
+    book_detail = book_detail[0].model_dump(exclude={"author_id"})
+    json_encoded = jsonable_encoder(book_detail)
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=json_encoded)
 
 
 @router.delete("/{book_id}")

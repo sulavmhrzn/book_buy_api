@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from beanie import PydanticObjectId
 from pydantic import BaseModel, Field
 
-from models.authors import Author
+from schemas.authors import OutputAuthorSchema
 
 
 class BaseBookSchema(BaseModel):
@@ -16,8 +18,13 @@ class BaseBookSchema(BaseModel):
 
 
 class BookCreateSchema(BaseBookSchema):
-    pass
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class BookListOutSchema(BaseBookSchema):
     id: PydanticObjectId = Field(..., alias="_id")
+
+
+class BookDetailOutSchema(BookListOutSchema):
+    created_at: datetime
+    author: list[OutputAuthorSchema]

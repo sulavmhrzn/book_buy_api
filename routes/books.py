@@ -5,7 +5,7 @@ import cloudinary.uploader
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from config.settings import settings
 from models.authors import Author
@@ -50,7 +50,7 @@ async def create_book(
         )
 
     image_data = await image.read()
-    result = cloudinary.uploader.upload(image_data, folder="book_buy")
+    result = cloudinary.uploader.upload(image_data, folder="book_buy", public_id=title)
     schema = BookCreateSchema(
         title=title,
         description=description,
@@ -107,9 +107,20 @@ async def get_book(book_id: PydanticObjectId):
 
 
 @router.delete("/{book_id}")
-async def delete_book(book_id: int):
+async def delete_book(book_id: PydanticObjectId, user: User = Depends(get_admin_user)):
     """Delete a book by id"""
-    pass
+    book = await Book.get(book_id)
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+    response = cloudinary.uploader.destroy(f"book_buy/{book.title}")
+    if response["result"] == "not found":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book image not found"
+        )
+    await book.delete()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put("/{book_id}")

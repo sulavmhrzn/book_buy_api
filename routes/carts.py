@@ -1,3 +1,4 @@
+#! Every route in this file needs to be refactored. The code is not clean.
 from typing import Annotated
 
 from beanie import PydanticObjectId
@@ -66,3 +67,21 @@ async def remove_book_from_cart(
         )
     await cart.remove_from_cart(book_id=book_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/udpate-cart-item")
+async def update_cart_item(
+    cart_item: CreateCartItemSchema, user: User = Depends(get_current_user)
+):
+    cart = await Cart.find_one(Cart.user_id == user.id)
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found"
+        )
+    book = await Book.get(cart_item.book_id)
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+    await cart.update_cart_items(book_id=cart_item.book_id, quantity=cart_item.quantity)
+    return JSONResponse(status_code=status.HTTP_200_OK, content="cart updated")

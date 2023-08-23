@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 class BaseCartItemsSchema(BaseModel):
     book_id: PydanticObjectId
-    quantity: int = 1
+    quantity: int = Field(1, gt=0)
 
 
 class CreateCartItemSchema(BaseCartItemsSchema):

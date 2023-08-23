@@ -12,6 +12,7 @@ from models.authors import Author
 from models.books import Book
 from models.users import User
 from schemas.books import BookCreateSchema, BookDetailOutSchema, BookListOutSchema
+from utils.helpers import get_object_or_404
 from utils.security import get_admin_user
 
 router = APIRouter()
@@ -32,11 +33,9 @@ async def create_book(
     user: User = Depends(get_admin_user),
 ):
     """Create a book"""
-    author_exists = await Author.get(author_id)
-    if not author_exists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Author not found"
-        )
+
+    author = await get_object_or_404(Author, author_id)
+
     content_type = image.content_type
     if content_type not in ["image/jpeg", "image/png", "image/jpg"]:
         raise HTTPException(
@@ -81,11 +80,7 @@ async def get_books():
 @router.get("/{book_id}")
 async def get_book(book_id: PydanticObjectId):
     """Get a book by id"""
-    book = await Book.get(book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
+    book = await get_object_or_404(Book, book_id)
 
     book_detail = await book.aggregate(
         [
@@ -109,11 +104,8 @@ async def get_book(book_id: PydanticObjectId):
 @router.delete("/{book_id}")
 async def delete_book(book_id: PydanticObjectId, user: User = Depends(get_admin_user)):
     """Delete a book by id"""
-    book = await Book.get(book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
+    book = await get_object_or_404(Book, book_id)
+
     response = cloudinary.uploader.destroy(f"book_buy/{book.title}")
     if response["result"] == "not found":
         raise HTTPException(

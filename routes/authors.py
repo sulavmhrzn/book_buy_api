@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from models.authors import Author
 from models.users import User
 from schemas.authors import CreateAuthorSchema, OutputAuthorSchema, UpdateAuthorSchema
+from utils.helpers import get_object_or_404
 from utils.security import get_admin_user
 
 router = APIRouter()
@@ -43,9 +44,7 @@ async def get_authors(
 @router.get("/{author_id}")
 async def get_author(author_id: PydanticObjectId):
     """Get an author by id"""
-    author = await Author.get(author_id)
-    if not author:
-        raise HTTPException(status_code=404, detail="Author not found")
+    author = await get_object_or_404(Author, author_id)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=OutputAuthorSchema(**author.model_dump(by_alias=True)).model_dump(),
@@ -57,9 +56,8 @@ async def delete_author(
     author_id: PydanticObjectId, user: User = Depends(get_admin_user)
 ):
     """Delete an author by id"""
-    author = await Author.get(author_id)
-    if not author:
-        raise HTTPException(status_code=404, detail="Author not found")
+    author = await get_object_or_404(Author, author_id)
+
     await author.delete()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -71,9 +69,8 @@ async def update_author(
     user: User = Depends(get_admin_user),
 ):
     """Update an author by id"""
-    author = await Author.get(author_id)
-    if not author:
-        raise HTTPException(status_code=404, detail="Author not found")
+    author = await get_object_or_404(Author, author_id)
+
     await author.set(
         update_author.model_dump(
             exclude_unset=True, exclude_defaults=True, exclude_none=True

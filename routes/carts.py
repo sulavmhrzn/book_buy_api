@@ -1,6 +1,8 @@
+from typing import Annotated
+
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi.responses import JSONResponse, Response
 
 from models.books import Book
 from models.carts import Cart
@@ -45,3 +47,22 @@ async def add_book_to_cart(
         cart = await Cart(user_id=user.id).insert()
     await cart.add_to_cart(book_id=cart_item.book_id, quantity=cart_item.quantity)
     return JSONResponse(status_code=status.HTTP_200_OK, content="cart updated")
+
+
+@router.delete("/remove-book-from-cart")
+async def remove_book_from_cart(
+    book_id: Annotated[PydanticObjectId, Body()], user: User = Depends(get_current_user)
+):
+    """Remove a book from cart"""
+    book = await Book.get(book_id)
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+    cart = await Cart.find_one(Cart.user_id == user.id)
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found"
+        )
+    await cart.remove_from_cart(book_id=book_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

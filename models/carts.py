@@ -22,3 +22,11 @@ class Cart(Document):
                 return
         self.cart_items.append(CartItemSchema(book_id=book_id, quantity=quantity))
         await self.save()
+
+    async def remove_from_cart(self, *, book_id: PydanticObjectId):
+        if not self.cart_items:
+            return
+        for item in self.cart_items:
+            if item.book_id == book_id:
+                self.cart_items.remove(item)
+                await self.save()

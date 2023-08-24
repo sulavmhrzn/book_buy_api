@@ -30,3 +30,4 @@ class CreateCartSchemaInDB(BaseCartSchema):
 
 class OutputCartSchema(BaseCartSchema):
     id: PydanticObjectId = Field(..., alias="_id")
+    total_price: int

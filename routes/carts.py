@@ -14,6 +14,7 @@ from schemas.carts import (
     CreateCartSchemaInDB,
     OutputCartSchema,
 )
+from utils.helpers import get_object_or_404
 from utils.security import get_current_user
 
 router = APIRouter()
@@ -85,3 +86,21 @@ async def update_cart_item(
         )
     await cart.update_cart_items(book_id=cart_item.book_id, quantity=cart_item.quantity)
     return JSONResponse(status_code=status.HTTP_200_OK, content="cart updated")
+
+
+@router.get("/")
+async def get_cart(user: User = Depends(get_current_user)):
+    cart = await Cart.find_one(Cart.user_id == user.id)
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found"
+        )
+    await cart.calculate_total_price()
+    return OutputCartSchema(**cart.model_dump(by_alias=True)).model_dump()
+
+
+@router.delete("/")
+async def delete_cart(user: User = Depends(get_current_user)):
+    cart = await Cart.find_one(Cart.user_id == user.id)
+    await cart.delete()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

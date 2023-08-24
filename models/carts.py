@@ -1,12 +1,14 @@
 from beanie import Document, PydanticObjectId
 from pydantic import Field
 
+from models.books import Book
 from schemas.carts import CartItemSchema
 
 
 class Cart(Document):
     user_id: PydanticObjectId
     cart_items: list[CartItemSchema] = []
+    total_price: int = 0
 
     class Settings:
         name = "carts"
@@ -39,3 +41,9 @@ class Cart(Document):
                 item.quantity = quantity
                 await self.save()
                 return
+
+    async def calculate_total_price(self):
+        for item in self.cart_items:
+            book = await Book.get(item.book_id)
+            self.total_price += book.price * item.quantity
+        await self.save()

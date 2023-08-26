@@ -35,7 +35,10 @@ async def register(
     if exists := await User.get_user_by_email(email=new_user.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"User with email {exists.email} already exists",
+            detail={
+                "status": "error",
+                "message": f"User with email {exists.email} already exists.",
+            },
         )
     new_user.password = create_hash_password(new_user.password)
     result = await User(
@@ -57,7 +60,8 @@ async def register(
 
     return JSONResponse(
         content={
-            "message": OutputUserSchema(**result.model_dump(by_alias=True)).model_dump()
+            "status": "success",
+            "data": OutputUserSchema(**result.model_dump(by_alias=True)).model_dump(),
         },
         status_code=status.HTTP_201_CREATED,
     )
@@ -72,14 +76,20 @@ async def get_activation_token(
     if not user_exists:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with email {user.email} not found",
+            detail={
+                "status": "error",
+                "message": f"User with email {user.email} not found",
+            },
         )
     exists = await ActivationToken.get_token_for_user(user_id=user_exists.id)
     if exists:
         # if the token hasn't expired, return it instead of creating a new one
         if exists.expires_at > datetime.utcnow():
             return JSONResponse(
-                content=f"Your activation token: {exists.activation_token}",
+                content={
+                    "status": "success",
+                    "data": {"token": exists.activation_token},
+                },
                 status_code=status.HTTP_200_OK,
             )
         await exists.delete()
@@ -92,10 +102,13 @@ async def get_activation_token(
         send_email,
         subject="Activation Token",
         recipients=user_exists.email,
-        body=f"Your activation token: {token.activation_token}. Please use it within 24 hours.",
+        body=f"Your activation token: {token.activation_token}. Please activate your account within 24 hours.",
     )
     return JSONResponse(
-        content=f"Your new activation token: {token.activation_token}. Please use it within 24 hours.",
+        content={
+            "status": "success",
+            "data": {"token": token.activation_token},
+        },
         status_code=status.HTTP_201_CREATED,
     )
 
@@ -108,11 +121,13 @@ async def get_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = await User.authenticate(email=email, password=password)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid credentials"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"status": "error", "message": "Invalid credentials"},
         )
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"status": "error", "message": "Inactive user"},
         )
     token = create_access_token(sub=user.email)
     return {"access_token": token, "token_type": "bearer"}
@@ -125,20 +140,20 @@ async def activate_user(token: str):
     if not exists:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invalid token.",
+            detail={"status": "error", "message": "Invalid token."},
         )
     if exists.expires_at < datetime.utcnow():
         await exists.delete()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token has expired.",
+            detail={"status": "error", "message": "Token has expired."},
         )
     user = await User.find_one(User.id == exists.user_id)
     user.is_active = True
     await user.save()
     await exists.delete()
     return JSONResponse(
-        content="User activated.",
+        content={"status": "success", "data": "User activated."},
         status_code=status.HTTP_200_OK,
     )
 
@@ -162,13 +177,19 @@ async def change_password(
     if not verify_password(password.old_password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please enter your current password correctly.",
+            detail={
+                "status": "error",
+                "message": "Please enter your current password correctly.",
+            },
         )
 
     if password.old_password == password.new_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Your new password cannot be similar to the old password.",
+            detail={
+                "status": "error",
+                "message": "Your new password cannot be similar to the old password.",
+            },
         )
 
     await request.app.state.redis.setex(
@@ -178,7 +199,8 @@ async def change_password(
     user.hashed_password = create_hash_password(password.new_password)
     await user.save()
     return JSONResponse(
-        content="Password changed successfully.", status_code=status.HTTP_200_OK
+        content={"status": "success", "data": "Password changed successfully."},
+        status_code=status.HTTP_200_OK,
     )
 
 
@@ -189,4 +211,6 @@ async def logout(request: Request, user: User = Depends(get_current_user)):
     await request.app.state.redis.setex(
         f"bl_{token}", time=timedelta(minutes=settings.JWT_EXPIRY_MINUTES), value=token
     )
-    return JSONResponse(content="Logged out successfully.")
+    return JSONResponse(
+        content={"status": "success", "data": "Logged out successfully."}
+    )

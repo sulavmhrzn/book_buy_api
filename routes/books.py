@@ -3,16 +3,16 @@ from typing import Annotated
 import cloudinary
 import cloudinary.uploader
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 
-from config.settings import settings
+from config.settings import settings  # for cloudinary config
 from models.authors import Author
 from models.books import Book
 from models.users import User
 from schemas.books import BookCreateSchema, BookDetailOutSchema, BookListOutSchema
-from utils.helpers import get_object_or_404
+from utils.helpers import error_response, get_object_or_404, success_response
 from utils.security import get_admin_user
 
 router = APIRouter()
@@ -38,14 +38,14 @@ async def create_book(
 
     content_type = image.content_type
     if content_type not in ["image/jpeg", "image/png", "image/jpg"]:
-        raise HTTPException(
+        raise error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only jpeg, jpg and png images are allowed",
+            message="Only jpeg, jpg and png images are allowed",
         )
     if image.size > 2 * 1024 * 1024:
-        raise HTTPException(
+        raise error_response(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Image size should not be more than 2MB",
+            message="Image size should not be more than 2MB",
         )
 
     image_data = await image.read()
@@ -61,9 +61,7 @@ async def create_book(
         image_url=result["secure_url"],
     )
     await Book(**schema.model_dump()).insert()
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED, content={"message": "Book created"}
-    )
+    return success_response(status_code=status.HTTP_201_CREATED, message="Book created")
 
 
 @router.get("/")
@@ -71,9 +69,9 @@ async def get_books():
     """Get all books"""
     books = await Book.find_all(projection_model=BookListOutSchema).to_list()
     json_encoded = jsonable_encoder(books)
-    return JSONResponse(
+    return success_response(
         status_code=status.HTTP_200_OK,
-        content={"message": "Books found", "books": json_encoded},
+        message=json_encoded,
     )
 
 
@@ -98,7 +96,7 @@ async def get_book(book_id: PydanticObjectId):
     book_detail = book_detail[0].model_dump(exclude={"author_id"})
     json_encoded = jsonable_encoder(book_detail)
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content=json_encoded)
+    return success_response(status_code=status.HTTP_200_OK, message=json_encoded)
 
 
 @router.delete("/{book_id}")
@@ -108,8 +106,8 @@ async def delete_book(book_id: PydanticObjectId, user: User = Depends(get_admin_
 
     response = cloudinary.uploader.destroy(f"book_buy/{book.title}")
     if response["result"] == "not found":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book image not found"
+        raise error_response(
+            status_code=status.HTTP_404_NOT_FOUND, message="Book image not found"
         )
     await book.delete()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

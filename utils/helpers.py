@@ -13,8 +13,8 @@ async def get_object_or_404(
     """Get object or raise 404"""
     result = await obj.get(key)
     if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"{obj.__name__} not found"
+        raise error_response(
+            status_code=status.HTTP_404_NOT_FOUND, message=f"{obj.__name__} not found"
         )
     return result
 
@@ -33,7 +33,7 @@ def error_response(
 def success_response(
     message: Any, status_code: int = 200, headers: Optional[dict[str, str]] = None
 ) -> JSONResponse:
-    """Return a JSONResponse with a JSON body.""" 
+    """Return a JSONResponse with a JSON body."""
     return JSONResponse(
         status_code=status_code,
         content={"status": "success", "detail": message},

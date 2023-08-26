@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
@@ -18,6 +20,14 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    exc.errors()[0].pop("url")
+    exc.errors()[0].pop("ctx")
+    json_encoded = jsonable_encoder({"status": "error", "message": exc.errors()})
+    return JSONResponse(status_code=422, content=json_encoded)
 
 
 @app.middleware("http")
